@@ -8,7 +8,7 @@ const int INT_SIZE = sizeof(int);
 
 int lpipe_read_first(int lpipe[2], int *dst) {
     if (read(lpipe[RD], dst, INT_SIZE) == INT_SIZE) {
-        fprintf(1, "prime %d\n", *dst);
+        printf("prime %d\n", *dst);
         return 0;
     }
     return 1;
