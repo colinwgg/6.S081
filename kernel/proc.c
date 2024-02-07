@@ -121,6 +121,8 @@ found:
     return 0;
   }
 
+  p->kernelpt = kvmcreate(p);
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -150,6 +152,10 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  if (p->kernelpt) {
+    kvmfree(p->kernelpt, p->sz);
+  }
+  p->kernelpt = 0;
 }
 
 // Create a user page table for a given process,
@@ -473,12 +479,14 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        w_satp(MAKE_SATP(p->kernelpt));
+        sfence_vma();
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
-
+        kvminithart();
         found = 1;
       }
       release(&p->lock);

@@ -463,3 +463,40 @@ void vmprint(pagetable_t pagetable) {
   printf("page table %p\n", pagetable);
   _vmprint(pagetable, 1);
 }
+
+void uvmmap(pagetable_t kernel_pt, uint64 va, uint64 pa, uint64 sz, int perm) {
+  if(mappages(kernel_pt, va, sz, pa, perm) != 0)
+    panic("uvmmap");
+}
+
+pagetable_t kvmcreate() {
+  pagetable_t kernel_pt = uvmcreate();
+  for(int i = 1; i < 512; i++) {
+    kernel_pt[i] = kernel_pagetable[i];
+  }
+  uvmmap(kernel_pt, UART0, UART0, PGSIZE, PTE_R | PTE_W);
+
+  uvmmap(kernel_pt, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+
+  uvmmap(kernel_pt, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
+
+  uvmmap(kernel_pt, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
+
+  return kernel_pt;
+}
+
+void kvmfree(pagetable_t kpagetale, uint64 sz) 
+{
+  pte_t pte = kpagetale[0];
+  pagetable_t level1 = (pagetable_t) PTE2PA(pte);
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = level1[i];
+    if (pte & PTE_V) {
+      uint64 level2 = PTE2PA(pte);
+      kfree((void *) level2);
+      level1[i] = 0;
+    }
+  }
+  kfree((void *) level1);
+  kfree((void *) kpagetale);
+}
