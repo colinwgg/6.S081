@@ -235,6 +235,8 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  
+  kvmmapuser(p->pagetable, p->kernelpt, 0, p->sz);
 
   release(&p->lock);
 }
@@ -255,6 +257,7 @@ growproc(int n)
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
   }
+  kvmmapuser(p->pagetable, p->kernelpt, p->sz, sz);
   p->sz = sz;
   return 0;
 }
@@ -280,7 +283,7 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
-
+  kvmmapuser(np->pagetable, np->kernelpt, 0, np->sz);
   np->parent = p;
 
   // copy saved user registers.
