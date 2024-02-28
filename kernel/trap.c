@@ -78,7 +78,9 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2) {
-    if (++p->ticks == p->alarm_interval) {
+    if (p->alarm_interval != 0 && ++p->ticks == p->alarm_interval && p->alarm_trapframe == 0) {
+      p->alarm_trapframe = kalloc();
+      memmove(p->alarm_trapframe, p->trapframe, sizeof(struct trapframe));
       p->trapframe->epc = (uint64)p->alarm_handler;
       p->ticks = 0;
     }

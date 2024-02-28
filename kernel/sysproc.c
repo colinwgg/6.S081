@@ -105,5 +105,10 @@ uint64 sys_sigalarm() {
 }
 
 uint64 sys_sigreturn() {
+  if (myproc()->alarm_trapframe != 0) {
+    memmove(myproc()->trapframe, myproc()->alarm_trapframe, sizeof(struct trapframe));
+    kfree(myproc()->alarm_trapframe);
+    myproc()->alarm_trapframe = 0;
+  }
   return 0;
 }
