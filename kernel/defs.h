@@ -63,6 +63,11 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+void            acquire_refcnt(void);
+void            release_refcnt(void);
+void            refcnt_set(uint64, uint);
+uint            refcnt_get(uint64);
+void            refcnt_incr(uint64, uint);
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -171,6 +176,7 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
+int             cowcopy(uint64);
 
 // plic.c
 void            plicinit(void);
