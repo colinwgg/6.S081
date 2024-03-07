@@ -499,7 +499,7 @@ scheduler(void)
 // break in the few places where a lock is held but
 // there's no process.
 void
-sched(void)
+ sched(void)
 {
   int intena;
   struct proc *p = myproc();
