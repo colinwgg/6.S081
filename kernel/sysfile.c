@@ -484,3 +484,82 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64 sys_mmap(void) {
+  uint64 err = 0xffffffffffffffff;
+  uint64 addr;
+  int length;
+  int prot;
+  int flags;
+  int fd;
+  int offset;
+  struct file *file;
+
+  if (argaddr(0, &addr) < 0 || argint(1, &length) < 0 || argint(2, &prot) < 0 || 
+      argint(3, &flags) < 0 || argfd(4, &fd, &file) < 0 || argint(5, &offset) < 0) {
+        return err;
+      }
+  if (length < 0 || addr != 0 || offset != 0) {
+    return err;
+  }
+  if (file->writable == 0 && (prot & PROT_WRITE) != 0 && flags == MAP_SHARED) {
+    return err;
+  }
+  struct proc *p = myproc();
+  if (p->sz + length > MAXVA) {
+    return err;
+  }
+  for (int i = 0; i < NVMA; i++) {
+    if (p->vma[i].used == 0) {
+      p->vma[i].addr = p->sz;
+      p->vma[i].len = length;
+      p->vma[i].prot = prot;
+      p->vma[i].flags = flags;
+      p->vma[i].fd = fd;
+      p->vma[i].file = file;
+      p->vma[i].offset = offset;
+      p->vma[i].used = 1;
+
+      filedup(file);
+
+      p->sz += length;
+      return p->vma[i].addr;
+    }
+  }
+  return err;
+}
+
+uint64 sys_munmap(void) {
+  uint64 addr;
+  int length;
+  if (argaddr(0, &addr) < 0 || argint(1, &length) < 0) {
+    return -1;
+  }
+  int i;
+  struct proc *p = myproc();
+  for (i = 0; i < NVMA; i++) {
+    if (p->vma[i].used == 1 && p->vma[i].len >= length) {
+      if (p->vma[i].addr == addr) { // 解除映射起始位置与vma起始地址相同
+        p->vma[i].addr += length; 
+        p->vma[i].len -= length;
+        break;
+      }
+      if (addr + length == p->vma[i].addr + p->vma[i].len) { // 解除映射地址+需释放的长度==VMA的结束地址
+        p->vma[i].len -= length;
+        break;
+      }
+    }
+  }
+  if (i == NVMA) {
+    return -1;
+  }
+  if (p->vma[i].flags == MAP_SHARED && (p->vma[i].prot & PROT_WRITE) != 0) {
+    filewrite(p->vma[i].file, addr, length);
+  }
+  uvmunmap(p->pagetable, addr, length / PGSIZE, 1);
+  if (p->vma[i].len == 0) {
+    p->vma[i].used = 0;
+    fileclose(p->vma[i].file);
+  }
+  return 0;
+}
